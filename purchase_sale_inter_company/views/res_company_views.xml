@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="view_company_inter_change_inherit_form">
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="model">res.company</field>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Inter-Company">
+                    <group string="Invoice">
+                        <field name="invoice_auto_validation"/>
+                        <field name="use_inter_company_products"/>
+                    </group>
+                    <group string="Sale">
+                        <field name="sale_auto_validation"/>
+                        <field name="warehouse_id" attrs="{'required': True}" domain="[('company_id', '=', active_id)]"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    </data>
+</odoo>
+

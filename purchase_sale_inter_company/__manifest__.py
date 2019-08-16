@@ -6,7 +6,7 @@
 {
     'name': 'Inter Company Module for Purchase to Sale Order',
     'summary': 'Intercompany PO/SO rules',
-    'version': '10.0.1.0.0',
+    'version': '11.0.1.0.0',
     'category': 'Purchase Management',
     'website': 'http://www.odoo.com',
     'author': 'Odoo SA, Akretion, Odoo Community Association (OCA)',
@@ -18,8 +18,7 @@
         'account_invoice_inter_company',
     ],
     'data': [
-        'views/res_company_view.xml',
-        'views/sale_config_settings_views.xml',
+        'views/res_company_views.xml',
         'views/purchase_views.xml',
     ],
     'demo': [

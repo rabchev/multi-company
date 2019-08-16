@@ -11,18 +11,23 @@ class PurchaseOrder(models.Model):
         selection_add=[('intercompany', 'Based on intercompany invoice')])
 
     @api.multi
+    def find_company_from_partner(self):
+        self.ensure_one()
+        company = self.env['res.company'].sudo().search([
+            ('partner_id', '=', self.partner_id.id)
+        ], limit=1)
+        return company or False
+
+    @api.multi
     def button_confirm(self):
         """ Generate inter company sale order base on conditions."""
         res = super(PurchaseOrder, self).button_confirm()
         for purchase_order in self:
             # get the company from partner then trigger action of
             # intercompany relation
-            dest_company = self.env['res.company']._find_company_from_partner(
-                purchase_order.partner_id.id)
+            dest_company = purchase_order.find_company_from_partner()
             if dest_company:
-                purchase_order.sudo().\
-                    with_context(force_company=dest_company.id).\
-                    _inter_company_create_sale_order(dest_company.id)
+                purchase_order.sudo().with_context(force_company=dest_company.id)._inter_company_create_sale_order(dest_company.id)
         return res
 
     @api.multi
@@ -96,7 +101,7 @@ class PurchaseOrder(models.Model):
         """ Generate the Sale Order values from the PO
             :param name : the origin client reference
             :rtype name : string
-            :param partner : the partner reprenseting the company
+            :param partner : the partner representing the company
             :rtype partner : res.partner record
             :param company : the company of the created SO
             :rtype company : res.company record
