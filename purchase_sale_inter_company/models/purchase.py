@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
+# pylint:disable=
+# flake8: noqa: E501
+# pylama:ignore=E501
+
 from odoo import api, models, _, fields
 from odoo.exceptions import AccessError, UserError
 
 
 class PurchaseOrder(models.Model):
-
     _inherit = 'purchase.order'
 
     invoice_status = fields.Selection(
@@ -49,7 +51,7 @@ class PurchaseOrder(models.Model):
                 try:
                     purchase_line.product_id.sudo(dest_user).read(
                         ['default_code'])
-                except:
+                except Exception:
                     raise AccessError(_(
                         "You cannot create SO from PO because product '%s' "
                         "is not intercompany") % purchase_line.product_id.name)
@@ -96,8 +98,7 @@ class PurchaseOrder(models.Model):
             sale_order.action_confirm()
 
     @api.multi
-    def _prepare_sale_order_data(self, name, partner, dest_company,
-                                 direct_delivery_address):
+    def _prepare_sale_order_data(self, name, partner, dest_company, direct_delivery_address):
         """ Generate the Sale Order values from the PO
             :param name : the origin client reference
             :rtype name : string
