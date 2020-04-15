@@ -10,13 +10,20 @@ class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
     invoice_status = fields.Selection(
-        selection_add=[('intercompany', 'Based on intercompany invoice')])
+        selection_add=[('intercompany', 'Based on intercompany invoice')]
+    )
+    auto_sale_order_id = fields.Many2one(
+        'sale.order',
+        string='Source Sale Order',
+        readonly=True,
+        copy=False,
+        help="The sale order from which this purchase order was created in a dropship inter-comany situation.",
+    )
 
     @api.multi
-    def find_company_from_partner(self):
-        self.ensure_one()
+    def find_company_from_partner(self, partner):
         company = self.env['res.company'].sudo().search([
-            ('partner_id', '=', self.partner_id.id)
+            ('partner_id', '=', partner.commercial_partner_id.id)
         ], limit=1)
         return company or False
 
@@ -25,11 +32,30 @@ class PurchaseOrder(models.Model):
         """ Generate inter company sale order base on conditions."""
         res = super(PurchaseOrder, self).button_confirm()
         for purchase_order in self:
-            # get the company from partner then trigger action of
-            # intercompany relation
-            dest_company = purchase_order.find_company_from_partner()
-            if dest_company:
-                purchase_order.sudo().with_context(force_company=dest_company.id)._inter_company_create_sale_order(dest_company.id)
+            if purchase_order.auto_sale_order_id:
+                if purchase_order.picking_ids and purchase_order.auto_sale_order_id.picking_ids:
+                    pur_pick = purchase_order.picking_ids[0]
+                    sale_pick = purchase_order.auto_sale_order_id.picking_ids[0]
+                    pur_pick.carrier_id = sale_pick.carrier_id
+                    pur_pick.carrier_tracking_ref = sale_pick.carrier_tracking_ref
+            else:
+                sale_order = False
+                # get the company from partner then trigger action of
+                # intercompany relation
+                dest_company = self.find_company_from_partner(purchase_order.partner_id)
+                if dest_company:
+                    sale_order = purchase_order.sudo().with_context(force_company=dest_company.id) \
+                        ._inter_company_create_sale_order(dest_company.id)
+
+                # check if this order is a dropship to another intercompany and if so
+                # create another purchase order for the receiving company
+                if purchase_order.dest_address_id:
+                    receiving_company = self.find_company_from_partner(purchase_order.dest_address_id)
+                    if receiving_company and receiving_company.id != purchase_order.company_id.id:
+                        # Indicates a dropship to inter-company thus create purchase order for them
+                        purchase_order.sudo().with_context(force_company=receiving_company.id) \
+                            ._inter_company_create_dropship_purchase_order(receiving_company.id, sale_order)
+
         return res
 
     @api.multi
@@ -49,8 +75,7 @@ class PurchaseOrder(models.Model):
         if dest_user:
             for purchase_line in self.order_line:
                 try:
-                    purchase_line.product_id.sudo(dest_user).read(
-                        ['default_code'])
+                    purchase_line.product_id.sudo(dest_user).read(['default_code'])
                 except Exception:
                     raise AccessError(_(
                         "You cannot create SO from PO because product '%s' "
@@ -81,11 +106,13 @@ class PurchaseOrder(models.Model):
         # create the SO and generate its lines from the PO lines
         sale_order_data = self._prepare_sale_order_data(
             self.name, company_partner, dest_company,
-            self.dest_address_id and self.dest_address_id.id or False)
+            self.dest_address_id and self.dest_address_id.id or False
+        )
         sale_order = self.env['sale.order'].create(sale_order_data)
         for purchase_line in self.order_line:
             sale_line_data = self._prepare_sale_order_line_data(
-                purchase_line, dest_company, sale_order)
+                purchase_line, dest_company, sale_order
+            )
             self.env['sale.order.line'].create(sale_line_data)
         # write supplier reference field on PO
         if not self.partner_ref:
@@ -96,6 +123,7 @@ class PurchaseOrder(models.Model):
         # Validation of sale order
         if dest_company.sale_auto_validation:
             sale_order.action_confirm()
+        return sale_order
 
     @api.multi
     def _prepare_sale_order_data(self, name, partner, dest_company, direct_delivery_address):
@@ -133,6 +161,7 @@ class PurchaseOrder(models.Model):
             ),
             'company_id': dest_company.id,
             'client_order_ref': name,
+            'origin': name,
             'partner_id': partner.id,
             'warehouse_id': warehouse.id,
             'pricelist_id': partner.property_product_pricelist.id,
@@ -185,3 +214,30 @@ class PurchaseOrder(models.Model):
             'partner_ref': False,
         })
         return super(PurchaseOrder, self).button_cancel()
+
+    @api.multi
+    def _inter_company_create_dropship_purchase_order(self, dest_company_id, origin_order):
+        """ Create a Sale Order from the current PO (self)
+            Note : In this method, should be call in sudo with the propert
+            destination company in the context
+            :param company : the company of the created PO
+            :rtype company : res.company record
+        """
+        self.ensure_one()
+        dest_company = self.env['res.company'].browse(dest_company_id)
+        new_order = self.copy()
+        new_order.write({
+            'company_id': dest_company_id,
+            'auto_sale_order_id': origin_order and origin_order.id or False,
+            'invoice_status': 'intercompany',
+            'origin': self.name,
+            'partner_ref': origin_order and origin_order.name or self.name,
+        })
+        if origin_order:
+            origin_order.write({
+                'client_order_ref': new_order.name,
+                'auto_dropship_purchase_order_id': new_order.id
+            })
+
+        if dest_company.purchase_auto_confirm:
+            new_order.button_confirm()

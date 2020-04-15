@@ -15,6 +15,7 @@
     'depends': [
         'sale',
         'purchase',
+        'delivery',
         'account_invoice_inter_company',
     ],
     'data': [
