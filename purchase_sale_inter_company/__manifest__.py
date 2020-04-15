@@ -6,7 +6,7 @@
 {
     'name': 'Inter Company Module for Purchase to Sale Order',
     'summary': 'Intercompany PO/SO rules',
-    'version': '11.0.1.0.0',
+    'version': '11.0.1.0.2',
     'category': 'Purchase Management',
     'website': 'http://www.odoo.com',
     'author': 'Odoo SA, Akretion, Odoo Community Association (OCA)',
