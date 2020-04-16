@@ -8,6 +8,7 @@ from . import purchase
 from . import sale
 from . import account_invoice
 from . import stock_picking
+from . import procurement
 
 __all__ = [
     'res_company',
@@ -15,4 +16,5 @@ __all__ = [
     'sale',
     'account_invoice',
     'stock_picking',
+    'procurement',
 ]
