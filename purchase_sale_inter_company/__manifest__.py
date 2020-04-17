@@ -3,10 +3,12 @@
 # Copyright 2015-2017 Chafique Delli <chafique.delli@akretion.com>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+# pylint:disable=pointless-statement
+
 {
     'name': 'Inter Company Module for Purchase to Sale Order',
     'summary': 'Intercompany PO/SO rules',
-    'version': '11.0.1.0.2',
+    'version': '11.0.1.0.3',
     'category': 'Purchase Management',
     'website': 'http://www.odoo.com',
     'author': 'Odoo SA, Akretion, Odoo Community Association (OCA)',

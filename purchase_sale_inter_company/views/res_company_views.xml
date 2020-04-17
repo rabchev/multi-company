@@ -13,7 +13,6 @@
                     </group>
                     <group string="Sale">
                         <field name="sale_auto_validation"/>
-                        <field name="purchase_auto_confirm"/>
                         <field name="warehouse_id" attrs="{'required': True}" domain="[('company_id', '=', active_id)]"/>
                     </group>
                 </page>

@@ -20,7 +20,6 @@ class PurchaseOrder(models.Model):
         help="The sale order from which this purchase order was created in a dropship inter-comany situation.",
     )
 
-    @api.multi
     def find_company_from_partner(self, partner):
         company = self.env['res.company'].sudo().search([
             ('partner_id', '=', partner.commercial_partner_id.id)
@@ -32,35 +31,16 @@ class PurchaseOrder(models.Model):
         """ Generate inter company sale order base on conditions."""
         res = super(PurchaseOrder, self).button_confirm()
         for purchase_order in self:
-            if purchase_order.auto_sale_order_id:
-                if purchase_order.picking_ids and purchase_order.auto_sale_order_id.picking_ids:
-                    pur_pick = purchase_order.picking_ids[0]
-                    sale_pick = purchase_order.auto_sale_order_id.picking_ids[0]
-                    pur_pick.carrier_id = sale_pick.carrier_id
-                    pur_pick.carrier_tracking_ref = sale_pick.carrier_tracking_ref
-            else:
-                sale_order = False
-                # get the company from partner then trigger action of
-                # intercompany relation
-                dest_company = self.find_company_from_partner(purchase_order.partner_id)
-                if dest_company:
-                    sale_order = purchase_order.sudo().with_context(force_company=dest_company.id) \
-                        ._inter_company_create_sale_order(dest_company.id)
-
-                # check if this order is a dropship to another intercompany and if so
-                # create another purchase order for the receiving company
-                if purchase_order.dest_address_id:
-                    receiving_company = self.find_company_from_partner(purchase_order.dest_address_id)
-                    if receiving_company and receiving_company.id != purchase_order.company_id.id:
-                        # Indicates a dropship to inter-company thus create purchase order for them
-                        purchase_order.sudo().with_context(force_company=receiving_company.id) \
-                            ._inter_company_create_dropship_purchase_order(receiving_company.id, sale_order)
+            # get the company from partner then trigger action of
+            # intercompany relation
+            dest_company = self.find_company_from_partner(purchase_order.partner_id)
+            if dest_company:
+                purchase_order.sudo().with_context(force_company=dest_company.id) \
+                    ._inter_company_create_sale_order(dest_company.id)
 
         return res
 
-    @api.multi
     def _get_user_domain(self, dest_company):
-        self.ensure_one()
         group_purchase_user = self.env.ref('purchase.group_purchase_user')
         return [
             ('id', '!=', 1),
@@ -68,18 +48,17 @@ class PurchaseOrder(models.Model):
             ('id', 'in', group_purchase_user.users.ids),
         ]
 
-    @api.multi
-    def _check_intercompany_product(self, dest_company):
+    def check_intercompany_product(self, dest_company, order_lines):
         domain = self._get_user_domain(dest_company)
         dest_user = self.env['res.users'].search(domain, limit=1)
         if dest_user:
-            for purchase_line in self.order_line:
+            for line in order_lines:
                 try:
-                    purchase_line.product_id.sudo(dest_user).read(['default_code'])
-                except Exception:
+                    line.product_id.sudo(dest_user).read(['default_code'])
+                except Exception as error:
                     raise AccessError(_(
                         "You cannot create SO from PO because product '%s' "
-                        "is not intercompany") % purchase_line.product_id.name)
+                        "is not intercompany") % line.product_id.name)
 
     @api.multi
     def _inter_company_create_sale_order(self, dest_company_id):
@@ -92,7 +71,7 @@ class PurchaseOrder(models.Model):
         self.ensure_one()
         dest_company = self.env['res.company'].browse(dest_company_id)
         # check intercompany product
-        self._check_intercompany_product(dest_company)
+        self.check_intercompany_product(dest_company, self.order_line)
         # Accessing to selling partner with selling user, so data like
         # property_account_position can be retrieved
         company_partner = self.company_id.partner_id
@@ -105,7 +84,9 @@ class PurchaseOrder(models.Model):
                 'purchase price list currency.'))
         # create the SO and generate its lines from the PO lines
         sale_order_data = self._prepare_sale_order_data(
-            self.name, company_partner, dest_company,
+            self.name,
+            company_partner,
+            dest_company,
             self.dest_address_id and self.dest_address_id.id or False
         )
         sale_order = self.env['sale.order'].create(sale_order_data)
@@ -138,10 +119,9 @@ class PurchaseOrder(models.Model):
             :rtype direct_delivery_address : res.partner record
         """
         self.ensure_one()
-        partner_addr = partner.address_get(['other',
-                                            'invoice',
-                                            'delivery',
-                                            'contact'])
+        partner_addr = partner.address_get(
+            ['other', 'invoice', 'delivery', 'contact']
+        )
         # find location and warehouse, pick warehouse from company object
         warehouse = (
             dest_company.warehouse_id and
@@ -214,30 +194,3 @@ class PurchaseOrder(models.Model):
             'partner_ref': False,
         })
         return super(PurchaseOrder, self).button_cancel()
-
-    @api.multi
-    def _inter_company_create_dropship_purchase_order(self, dest_company_id, origin_order):
-        """ Create a Sale Order from the current PO (self)
-            Note : In this method, should be call in sudo with the propert
-            destination company in the context
-            :param company : the company of the created PO
-            :rtype company : res.company record
-        """
-        self.ensure_one()
-        dest_company = self.env['res.company'].browse(dest_company_id)
-        new_order = self.copy()
-        new_order.write({
-            'company_id': dest_company_id,
-            'auto_sale_order_id': origin_order and origin_order.id or False,
-            'invoice_status': 'intercompany',
-            'origin': self.name,
-            'partner_ref': origin_order and origin_order.name or self.name,
-        })
-        if origin_order:
-            origin_order.write({
-                'client_order_ref': new_order.name,
-                'auto_dropship_purchase_order_id': new_order.id
-            })
-
-        if dest_company.purchase_auto_confirm:
-            new_order.button_confirm()

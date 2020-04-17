@@ -11,11 +11,6 @@ class ResCompany(models.Model):
         help="When a Sale Order is created by a multi company rule "
              "for this company, it will automatically validate it",
         default=True)
-    purchase_auto_confirm = fields.Boolean(
-        string='Purchase Auto Confirm',
-        help="When a Purchase Order is created by a multi company rule "
-             "for this company, it will automatically confirm it",
-        default=True)
     warehouse_id = fields.Many2one(
         'stock.warehouse', string='Warehouse For Sale Orders',
         help="Default value to set on Sale Orders that "
