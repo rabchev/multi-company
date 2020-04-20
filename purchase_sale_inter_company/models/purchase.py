@@ -135,6 +135,13 @@ class PurchaseOrder(models.Model):
             self.picking_type_id.warehouse_id and
             self.picking_type_id.warehouse_id.partner_id and
             self.picking_type_id.warehouse_id.partner_id.id or False)
+
+        payment_mode_id = False
+        if self.origin:
+            sale_origin = self.env['sale.order'].search([('name', '=', self.origin)], limit=1)
+            if sale_origin:
+                payment_mode_id = sale_origin.payment_mode_id.id
+
         return {
             'name': (
                 self.env['ir.sequence'].next_by_code('sale.order') or '/'
@@ -155,7 +162,8 @@ class PurchaseOrder(models.Model):
             'partner_shipping_id': (direct_delivery_address or
                                     partner_shipping_id or
                                     partner_addr['delivery']),
-            'note': self.notes
+            'note': self.notes,
+            'payment_mode_id': payment_mode_id
         }
 
     @api.model
