@@ -91,7 +91,7 @@ class SaleOrder(models.Model):
     def _prepare_purchase_order_line(self, product_id, product_qty, product_uom, price_unit, po, supplier):
         procurement_uom_po_qty = product_uom._compute_quantity(product_qty, product_id.uom_po_id)
         seller = product_id._select_seller(
-            partner_id=supplier.id,
+            partner_id=supplier,
             quantity=procurement_uom_po_qty,
             date=po.date_order and po.date_order[:10],
             uom_id=product_id.uom_po_id)
