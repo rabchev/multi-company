@@ -26,6 +26,7 @@ class Picking(models.Model):
                         lambda p: p.partner_id.commercial_partner_id == pick.company_id.partner_id
                     )
                     if pick_origin:
+                        pick_origin = pick_origin[0]
                         tmp_loc = pick_origin.location_id
                         tmp_rec = pick_origin.partner_id
                         pick_origin.location_id = pick.location_id
@@ -33,7 +34,8 @@ class Picking(models.Model):
                         pick_origin.number_of_packages = pick.number_of_packages
                         for l in pick.move_line_ids:
                             ol = pick_origin.move_line_ids.filtered(lambda l: l.product_id == l.product_id)
-                            ol.qty_done = l.qty_done
+                            if ol:
+                                ol[0].qty_done = l.qty_done
                         super(Picking, pick_origin).action_done()
                         pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                         pick_origin.location_id = tmp_loc
