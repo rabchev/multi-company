@@ -14,6 +14,7 @@ class Picking(models.Model):
         res = super(Picking, self).action_done()
         for pick in self:
             origin = pick.sale_id and pick.sale_id.sudo().auto_purchase_order_id.origin
+            # FIXME: Quick and dirty hack for Econt specifically. Must be fixed as soon as possible!
             if origin and origin.startswith('SO/EEX'):
                 if pick.sale_id.sudo().auto_purchase_order_id.company_id.id != 1:
                     continue
