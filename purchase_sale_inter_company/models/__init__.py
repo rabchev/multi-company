@@ -7,10 +7,12 @@ from . import res_company
 from . import purchase
 from . import sale
 from . import account_invoice
+from . import stock
 
 __all__ = [
     'res_company',
     'purchase',
     'sale',
     'account_invoice',
+    'stock',
 ]

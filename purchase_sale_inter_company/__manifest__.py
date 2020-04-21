@@ -8,14 +8,16 @@
 {
     'name': 'Inter Company Module for Purchase to Sale Order',
     'summary': 'Intercompany PO/SO rules',
-    'version': '11.0.1.0.3',
+    'version': '11.0.1.0.4',
     'category': 'Purchase Management',
     'website': 'http://www.odoo.com',
     'author': 'Odoo SA, Akretion, Odoo Community Association (OCA)',
     'license': 'AGPL-3',
     'installable': True,
     'depends': [
+        'stock',
         'sale',
+        'sale_stock',
         'purchase',
         'delivery',
         'account_invoice_inter_company',

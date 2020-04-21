@@ -55,7 +55,7 @@ class PurchaseOrder(models.Model):
             for line in order_lines:
                 try:
                     line.product_id.sudo(dest_user).read(['default_code'])
-                except Exception as error:
+                except Exception:
                     raise AccessError(_(
                         "You cannot create SO from PO because product '%s' "
                         "is not intercompany") % line.product_id.name)
@@ -95,6 +95,7 @@ class PurchaseOrder(models.Model):
                 purchase_line, dest_company, sale_order
             )
             self.env['sale.order.line'].create(sale_line_data)
+
         # write supplier reference field on PO
         if not self.partner_ref:
             self.partner_ref = sale_order.name
@@ -104,6 +105,7 @@ class PurchaseOrder(models.Model):
         # Validation of sale order
         if dest_company.sale_auto_validation:
             sale_order.action_confirm()
+
         return sale_order
 
     @api.multi
@@ -136,19 +138,13 @@ class PurchaseOrder(models.Model):
             self.picking_type_id.warehouse_id.partner_id and
             self.picking_type_id.warehouse_id.partner_id.id or False)
 
-        payment_mode_id = False
-        if self.origin:
-            sale_origin = self.env['sale.order'].search([('name', '=', self.origin)], limit=1)
-            if sale_origin:
-                payment_mode_id = sale_origin.payment_mode_id.id
-
         return {
             'name': (
                 self.env['ir.sequence'].next_by_code('sale.order') or '/'
             ),
             'company_id': dest_company.id,
             'client_order_ref': name,
-            'origin': name,
+            'origin': self.origin,
             'partner_id': partner.id,
             'warehouse_id': warehouse.id,
             'pricelist_id': partner.property_product_pricelist.id,
@@ -163,7 +159,6 @@ class PurchaseOrder(models.Model):
                                     partner_shipping_id or
                                     partner_addr['delivery']),
             'note': self.notes,
-            'payment_mode_id': payment_mode_id
         }
 
     @api.model
