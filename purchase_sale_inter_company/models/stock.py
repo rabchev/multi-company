@@ -23,7 +23,7 @@ class Picking(models.Model):
                 if sale_origin and sale_origin.partner_shipping_id == pick.partner_id:
                     # it's dropshipping
                     pick_origin = sale_origin.picking_ids.filtered(
-                        lambda p: p.partner_id.commercial_partner_id == pick.company_id.partner_id
+                        lambda p: p.partner_id.commercial_partner_id == pick.company_id.partner_id and p.state in ['assigned', 'done']
                     )
                     origin_count = len(pick_origin)
                     if origin_count < 1:
