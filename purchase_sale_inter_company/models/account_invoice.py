@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*-
+# pylint:disable=
+# flake8: noqa: E501
+# pylama:ignore=E501
+
 from odoo import api, models
 
 
@@ -7,13 +10,11 @@ class AccountInvoice(models.Model):
     _inherit = 'account.invoice'
 
     @api.multi
-    def _inter_company_create_invoice(
-            self, dest_company, dest_inv_type, dest_journal_type):
-        res = super(AccountInvoice, self)._inter_company_create_invoice(
-            dest_company, dest_inv_type, dest_journal_type)
-        if dest_inv_type in ('in_invoice', 'out_refund'):
+    def _inter_company_create_invoice(self, dest_company):
+        res = super(AccountInvoice, self)._inter_company_create_invoice(dest_company)
+        if res.type in ('in_invoice', 'out_refund'):
             # Link intercompany purchase order with purchase invoice created
-            self._link_invoice_purchase(res['dest_invoice'])
+            self._link_invoice_purchase(res)
         return res
 
     @api.multi
