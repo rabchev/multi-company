@@ -60,6 +60,7 @@ class SaleOrder(models.Model):
                     supplier=selling_company.partner_id,
                 )
             )
+        po.button_confirm()
         return po
 
     @api.multi
@@ -85,6 +86,7 @@ class SaleOrder(models.Model):
             'payment_term_id': self.payment_term_id.id,
             'date_order': self.date_order,
             'fiscal_position_id': fpos,
+            'auto_sale_order_id': self.id,
         }
 
     @api.multi

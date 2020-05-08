@@ -31,12 +31,13 @@ class PurchaseOrder(models.Model):
         """ Generate inter company sale order base on conditions."""
         res = super(PurchaseOrder, self).button_confirm()
         for purchase_order in self:
-            # get the company from partner then trigger action of
-            # intercompany relation
-            dest_company = self.find_company_from_partner(purchase_order.partner_id)
-            if dest_company:
-                purchase_order.sudo().with_context(force_company=dest_company.id) \
-                    ._inter_company_create_sale_order(dest_company.id)
+            if not self.auto_sale_order_id:
+                # get the company from partner then trigger action of
+                # intercompany relation
+                dest_company = self.find_company_from_partner(purchase_order.partner_id)
+                if dest_company:
+                    purchase_order.sudo().with_context(force_company=dest_company.id) \
+                        ._inter_company_create_sale_order(dest_company.id)
 
         return res
 
