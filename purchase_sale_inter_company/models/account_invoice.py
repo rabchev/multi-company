@@ -12,9 +12,9 @@ class AccountInvoice(models.Model):
     @api.multi
     def _inter_company_create_invoice(self, dest_company):
         res = super(AccountInvoice, self)._inter_company_create_invoice(dest_company)
-        if res.type in ('in_invoice', 'out_refund'):
+        if res['dest_invoice'].type in ('in_invoice', 'out_refund'):
             # Link intercompany purchase order with purchase invoice created
-            self._link_invoice_purchase(res)
+            self._link_invoice_purchase(res['dest_invoice'])
         return res
 
     @api.multi
