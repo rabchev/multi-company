@@ -175,8 +175,8 @@ class AccountInvoice(models.Model):
             dest_partner_data, ['partner_id'])
         return {
             'name': self.name,
-            'origin': _('%s - Invoice: %s') % (self.company_id.name,
-                                               self.number),
+            'origin': _('%s - Invoice: %s') % (self.company_id.name, self.number),
+            'supplier_invoice_number': self.number,
             'type': dest_inv_type,
             'date_invoice': self.date_invoice,
             'reference': self.reference,
