@@ -27,7 +27,7 @@ class SaleOrder(models.Model):
                     if line.auto_purchase_line_id:
                         line.auto_purchase_line_id.sudo() \
                             .write({'price_unit': line.price_unit})
-            else:
+            elif order.partner_id.commercial_partner_id.id != order.company_id.partner_id.id:
                 receiving_company = po.find_company_from_partner(order.partner_id)
                 if receiving_company:
                     po = order.sudo().with_context(force_company=receiving_company.id) \

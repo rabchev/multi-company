@@ -184,16 +184,14 @@ class AccountInvoice(models.Model):
             'partner_id': self.company_id.partner_id.id,
             'journal_id': dest_journal.id,
             'currency_id': self.currency_id.id,
-            'fiscal_position_id': dest_partner_data.get(
-                'fiscal_position_id', False),
-            'payment_term_id': dest_partner_data.get(
-                'payment_term_id', False),
+            'fiscal_position_id': dest_partner_data.get('fiscal_position_id', False),
+            'payment_term_id': dest_partner_data.get('payment_term_id', False),
             'company_id': dest_company.id,
-            'partner_bank_id': dest_partner_data.get(
-                'partner_bank_id', False),
+            'partner_bank_id': dest_partner_data.get('partner_bank_id', False),
             'auto_generated': True,
             'auto_invoice_id': self.id,
             'comment': self.comment,
+            'partner_shipping_id': self.partner_shipping_id,
         }
 
     @api.multi
