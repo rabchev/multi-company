@@ -191,7 +191,7 @@ class AccountInvoice(models.Model):
             'auto_generated': True,
             'auto_invoice_id': self.id,
             'comment': self.comment,
-            'partner_shipping_id': self.partner_shipping_id,
+            'partner_shipping_id': self.partner_shipping_id.id,
         }
 
     @api.multi
