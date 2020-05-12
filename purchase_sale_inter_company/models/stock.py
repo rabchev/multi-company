@@ -19,7 +19,7 @@ class Picking(models.Model):
 
             origin = origin_po.origin
             # FIXME: Quick and dirty hack for Econt specifically. Must be fixed as soon as possible!
-            if origin and origin.startswith('SO/EEX') and pick.partner_id.commercial_partner_id.id != origin_po.company_id.partner_id.id:
+            if origin and origin.startswith('SO/EEX'):
                 if pick.sale_id.sudo().auto_purchase_order_id.company_id.id != 1:
                     continue
 
