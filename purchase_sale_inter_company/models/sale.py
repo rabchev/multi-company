@@ -50,16 +50,18 @@ class SaleOrder(models.Model):
             )
         )
         for sale_line in self.order_line:
-            PurchaseOrderLine.create(
-                self._prepare_purchase_order_line(
-                    product_id=sale_line.product_id,
-                    product_qty=sale_line.product_qty,
-                    product_uom=sale_line.product_uom,
-                    price_unit=sale_line.price_unit,
-                    po=po,
-                    supplier=selling_company.partner_id,
-                )
+            po_line_vals = self._prepare_purchase_order_line(
+                product_id=sale_line.product_id,
+                product_qty=sale_line.product_qty,
+                product_uom=sale_line.product_uom,
+                price_unit=sale_line.price_unit,
+                po=po,
+                supplier=selling_company.partner_id,
             )
+            po_line_vals.update({
+                'analytic_tag_ids': [(6, 0, [sale_line.analytic_tag_ids.ids])]
+            })
+            PurchaseOrderLine.create(po_line_vals)
         po.button_confirm()
         return po
 

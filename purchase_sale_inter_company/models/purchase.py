@@ -182,7 +182,8 @@ class PurchaseOrder(models.Model):
             'delay': (purchase_line.product_id and
                       purchase_line.product_id.sale_delay or 0.0),
             'company_id': dest_company.id,
-            'auto_purchase_line_id': purchase_line.id
+            'auto_purchase_line_id': purchase_line.id,
+            'analytic_tag_ids': [(6, 0, purchase_line.analytic_tag_ids.ids)],
         })
         sale_line.product_id_change()
         line_values = sale_line._convert_to_write(sale_line._cache)
