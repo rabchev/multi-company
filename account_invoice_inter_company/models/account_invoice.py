@@ -275,7 +275,7 @@ class AccountInvoiceLine(models.Model):
             # set via an inherit of this method in a custom module
             'account_analytic_id': dest_line_data.get(
                 'account_analytic_id', False),
-            'analytic_tag_ids': (6, False, self.analytic_tag_ids.ids)],
+            'analytic_tag_ids': [(6, False, self.analytic_tag_ids.ids)],
             'account_id': account.id or False,
             'auto_invoice_line_id': self.id,
             'invoice_id':  dest_line_data.get('invoice_id', False),
