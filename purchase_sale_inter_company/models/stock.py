@@ -41,20 +41,26 @@ class Picking(models.Model):
                     pick_origin.number_of_packages = pick.number_of_packages = pick.number_of_packages or 1
                     pick_origin.carrier_id = sale_origin.carrier_id
                     lines = [l for l in pick.move_line_ids]
+                    if not lines or len(lines) == 0:
+                        raise ValidationError('Inconsistent order lines between source and current order.')
+                    
                     for ol in pick_origin.move_line_ids:
-                        i = -1
+                        qty_done_sum = 0
+                        i = 0
                         for l in lines:
-                            i += 1
                             if l.product_id == ol.product_id:
-                                ol.qty_done = l.qty_done
-                                break
-                        if i > -1:
-                            lines.pop(i)
-                        else:
-                            raise ValidationError('Inconsistent order lines between source and current order.')
+                                qty_done_sum = qty_done_sum + l.qty_done
+                                i += 1
+                        
+                        ol.qty_done = qty_done_sum
+                        ol.lot_id = lines[0].lot_id
+                        
+                        for j in range(0,i):
+                            lines.pop(0)
+                    
                     if len(lines) > 0:
                         raise ValidationError('Inconsistent order lines between source and current order.')
-
+                    
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
