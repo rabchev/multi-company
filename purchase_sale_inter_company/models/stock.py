@@ -54,11 +54,8 @@ class Picking(models.Model):
                         
                         ol.qty_done = qty_done_sum
                         ol.lot_id = lines[0].lot_id
-                        
-                        for j in range(0,i):
-                            lines.pop(0)
                     
-                    if len(lines) > 0:
+                    if len(lines) != i:
                         raise ValidationError('Inconsistent order lines between source and current order.')
                     
                     pick_origin.action_done()
