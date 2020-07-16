@@ -44,19 +44,44 @@ class Picking(models.Model):
                     if not lines or len(lines) == 0:
                         raise ValidationError('Inconsistent order lines between source and current order.')
                     
-                    for ol in pick_origin.move_line_ids:
-                        qty_done_sum = 0
-                        i = 0
-                        for l in lines:
-                            if l.product_id == ol.product_id:
-                                qty_done_sum = qty_done_sum + l.qty_done
-                                i += 1
-                        
-                        ol.qty_done = qty_done_sum
-                        ol.lot_id = lines[0].lot_id
+                    cpy_lines = []
+                    all_lines_ids = []
+                    for l in lines:
+                        ll = l.copy()
+                        cpy_lines.append(ll)
+                        all_lines_ids.append(ll.id)
+                    for move_line in pick_origin.move_lines:
+                        move_lines_ids = []
+                        for ll in cpy_lines:
+                            if ll.move_id.product_id == move_line.product_id:
+                                move_lines_ids.append(ll.id)
+                                ll.move_id = move_line
+                        move_line.update({'move_line_ids': [(6, 0, move_lines_ids)]})
+                    pick_origin.update({'move_line_ids': [(6, 0, all_lines_ids)]})
                     
-                    if len(lines) != i:
-                        raise ValidationError('Inconsistent order lines between source and current order.')
+                    # refering origin SO document
+                    if pick.origin:
+                        so_ref = self.env['sale.order'].sudo().search([('name', '=', pick.origin)], limit=1)
+                        if so_ref:
+                            # refering client's purchase order
+                            if so_ref.client_order_ref:
+                                # find the Drop Shipping document and update it's lines to match the OUT stock.picking
+                                dp = self.env['stock.picking'].sudo().search([('origin', '=', so_ref.client_order_ref)], limit=1)
+                                if dp:
+                                    dp_cpy_lines = []
+                                    dp_all_line_ids = []
+                                    for l in lines:
+                                        ll = l.copy()
+                                        dp_cpy_lines.append(ll)
+                                        dp_all_line_ids.append(ll.id)
+                                    for move_line in dp.move_lines:
+                                        dp_move_line_ids = []
+                                        for ll in dp_cpy_lines:
+                                            if ll.move_id.product_id == move_line.product_id:
+                                                dp_move_line_ids.append(ll.id)
+                                                ll.move_id = move_line
+                                        move_line.sudo().update({'move_line_ids': [(6, 0, dp_move_line_ids)]})
+                                    dp.sudo().update({'move_line_ids': [(6, 0, dp_all_line_ids)]})
                     
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
