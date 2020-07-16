@@ -44,20 +44,7 @@ class Picking(models.Model):
                     if not lines or len(lines) == 0:
                         raise ValidationError('Inconsistent order lines between source and current order.')
                     
-                    cpy_lines = []
-                    all_lines_ids = []
-                    for l in lines:
-                        ll = l.copy()
-                        cpy_lines.append(ll)
-                        all_lines_ids.append(ll.id)
-                    for move_line in pick_origin.move_lines:
-                        move_lines_ids = []
-                        for ll in cpy_lines:
-                            if ll.move_id.product_id == move_line.product_id:
-                                move_lines_ids.append(ll.id)
-                                ll.move_id = move_line
-                        move_line.update({'move_line_ids': [(6, 0, move_lines_ids)]})
-                    pick_origin.update({'move_line_ids': [(6, 0, all_lines_ids)]})
+                    self._copy_move_lines(pick_origin, lines)
                     
                     # refering origin SO document
                     if pick.origin:
@@ -68,20 +55,7 @@ class Picking(models.Model):
                                 # find the Drop Shipping document and update it's lines to match the OUT stock.picking
                                 dp = self.env['stock.picking'].sudo().search([('origin', '=', so_ref.client_order_ref)], limit=1)
                                 if dp:
-                                    dp_cpy_lines = []
-                                    dp_all_line_ids = []
-                                    for l in lines:
-                                        ll = l.copy()
-                                        dp_cpy_lines.append(ll)
-                                        dp_all_line_ids.append(ll.id)
-                                    for move_line in dp.move_lines:
-                                        dp_move_line_ids = []
-                                        for ll in dp_cpy_lines:
-                                            if ll.move_id.product_id == move_line.product_id:
-                                                dp_move_line_ids.append(ll.id)
-                                                ll.move_id = move_line
-                                        move_line.sudo().update({'move_line_ids': [(6, 0, dp_move_line_ids)]})
-                                    dp.sudo().update({'move_line_ids': [(6, 0, dp_all_line_ids)]})
+                                    self._copy_move_lines(dp, lines)
                     
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
@@ -90,3 +64,20 @@ class Picking(models.Model):
                     pick_origin.partner_id = tmp_rec
 
         return res
+    
+    def _copy_move_lines(self, stock_picking, lines):
+        cpy_lines = []
+        all_lines_ids = []
+        for l in lines:
+            ll = l.copy()
+            cpy_lines.append(ll)
+            all_lines_ids.append(ll.id)
+        for move_line in stock_picking.move_lines:
+            move_lines_ids = []
+            for ll in cpy_lines:
+                if ll.move_id.product_id == move_line.product_id:
+                    move_lines_ids.append(ll.id)
+                    ll.move_id = move_line
+            move_line.update({'move_line_ids': [(6, 0, move_lines_ids)]})
+        stock_picking.update({'move_line_ids': [(6, 0, all_lines_ids)]})
+
