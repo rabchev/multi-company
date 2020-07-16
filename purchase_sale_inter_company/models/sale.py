@@ -59,7 +59,7 @@ class SaleOrder(models.Model):
                 supplier=selling_company.partner_id,
             )
             po_line_vals.update({
-                'analytic_tag_ids': [(6, 0, [sale_line.analytic_tag_ids.ids])]
+                'analytic_tag_ids': [(6, 0, sale_line.analytic_tag_ids.ids)]
             })
             PurchaseOrderLine.create(po_line_vals)
         po.button_confirm()
