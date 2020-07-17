@@ -52,17 +52,6 @@ class Picking(models.Model):
                     
                     self._replace_move_lines(pick_origin, lines)
                     
-                    # refering origin SO document
-                    if pick.origin:
-                        so_ref = self.env['sale.order'].sudo().search([('name', '=', pick.origin)], limit=1)
-                        if so_ref:
-                            # refering client's purchase order
-                            if so_ref.client_order_ref:
-                                # find the Drop Shipping document and update it's lines to match the OUT stock.picking
-                                dp = self.env['stock.picking'].sudo().search([('origin', '=', so_ref.client_order_ref)], limit=1)
-                                if dp:
-                                    self._replace_move_lines(dp, lines)
-                    
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
