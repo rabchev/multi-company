@@ -50,7 +50,7 @@ class Picking(models.Model):
                         if pickLen != originLen:
                             raise ValidationError('Inconsistent order lines between source and current order.')
                     
-                    self._copy_move_lines(pick_origin, lines)
+                    self._replace_move_lines(pick_origin, lines)
                     
                     # refering origin SO document
                     if pick.origin:
@@ -61,7 +61,7 @@ class Picking(models.Model):
                                 # find the Drop Shipping document and update it's lines to match the OUT stock.picking
                                 dp = self.env['stock.picking'].sudo().search([('origin', '=', so_ref.client_order_ref)], limit=1)
                                 if dp:
-                                    self._copy_move_lines(dp, lines)
+                                    self._replace_move_lines(dp, lines)
                     
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
@@ -71,7 +71,10 @@ class Picking(models.Model):
 
         return res
     
-    def _copy_move_lines(self, stock_picking, lines):
+    def _replace_move_lines(self, stock_picking, lines):
+        
+        self._delete_leaf_move_lines(stock_picking)
+
         cpy_lines = []
         all_lines_ids = []
         for l in lines:
@@ -84,6 +87,11 @@ class Picking(models.Model):
                 if ll.move_id.product_id == move_line.product_id:
                     move_lines_ids.append(ll.id)
                     ll.move_id = move_line
-            move_line.update({'move_line_ids': [(6, 0, move_lines_ids)]})
-        stock_picking.update({'move_line_ids': [(6, 0, all_lines_ids)]})
+            move_line.write({'move_line_ids': [(6, 0, move_lines_ids)]})
+        stock_picking.write({'move_line_ids': [(6, 0, all_lines_ids)]})
 
+    def _delete_leaf_move_lines(self, stock_picking):
+        for move_line in stock_picking.move_lines:
+            leaf_lines = [l for l in move_line.move_line_ids]
+            for leaf in leaf_lines:
+                move_line.write({'move_line_ids': [(2, leaf.id, 0)]})
