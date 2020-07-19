@@ -26,7 +26,7 @@ class Picking(models.Model):
                 sale_origin = self.env['sale.order'].sudo().search([('name', '=', origin)], limit=1)
                 if sale_origin and sale_origin.partner_shipping_id == pick.partner_id:
                     # it's dropshipping
-                    pick_origin = sale_origin.picking_ids.filtered(
+                    pick_origin = sale_origin.sudo().picking_ids.filtered(
                         lambda p: p.partner_id.commercial_partner_id == pick.company_id.partner_id and p.state in ['assigned', 'done']
                     )
                     origin_count = len(pick_origin)
@@ -38,11 +38,11 @@ class Picking(models.Model):
                     tmp_rec = pick_origin.partner_id
                     pick_origin.location_id = pick.location_id
                     pick_origin.partner_id = pick.partner_id
-                    pick_origin.number_of_packages = pick.number_of_packages = pick.number_of_packages or 1
+                    pick_origin.number_of_packages = pick.number_of_packages or 1
                     pick_origin.carrier_id = sale_origin.carrier_id
                     lines = [l for l in pick.move_line_ids]
                     if not lines or len(lines) == 0:
-                        raise ValidationError('Inconsistent order lines between source and current order.')
+                        raise ValidationError('The picking has no stock move lines.')
                     
                     for prodID in pick_origin.move_lines.product_id:
                         pickLen = len(pick.move_lines.filtered(lambda p: p.product_id == prodID))
@@ -50,8 +50,24 @@ class Picking(models.Model):
                         if pickLen != originLen:
                             raise ValidationError('Inconsistent order lines between source and current order.')
                     
-                    self._replace_move_lines(pick_origin, lines)
-                    
+                    self._replace_move_lines(pick_origin, lines, True)
+
+                    # Replace move lines in the stock moves in the IN type stock pickings
+                    company_po = self.env['purchase.order'].sudo().search([('origin', '=', sale_origin.name)]).filtered(
+                        lambda p: p.partner_id.id == 1)
+                    for in_stock_picking in company_po.picking_ids:
+                        if '/IN/' in in_stock_picking.name:
+                            found = False
+                            for l in lines:
+                                for ml in in_stock_picking.move_lines:
+                                    if ml.product_id.id == l.move_id.product_id.id:
+                                        found = True
+                                        break
+                                if found:
+                                    break
+                            if found:
+                                self._replace_move_lines(in_stock_picking, lines)
+
                     pick_origin.action_done()
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
@@ -60,7 +76,7 @@ class Picking(models.Model):
 
         return res
     
-    def _replace_move_lines(self, stock_picking, lines):
+    def _replace_move_lines(self, stock_picking, lines, replace_qty=False):
         
         self._delete_leaf_move_lines(stock_picking)
 
@@ -68,6 +84,9 @@ class Picking(models.Model):
         all_lines_ids = []
         for l in lines:
             ll = l.copy()
+            ll.write({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name})
+            if replace_qty:
+                ll.write({'qty_done': l.qty_done})
             cpy_lines.append(ll)
             all_lines_ids.append(ll.id)
         for move_line in stock_picking.move_lines:
