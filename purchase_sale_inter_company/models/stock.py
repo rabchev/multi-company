@@ -83,9 +83,10 @@ class Picking(models.Model):
 
         cpy_lines = []
         all_lines_ids = []
+        all_lines_props = []
         for l in lines:
             ll = l.copy()
-            ll.write({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name,
+            all_lines_props.append({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name,
                       'qty_done': l.qty_done, 'location_dest_id': dest_stock_location.id})
             cpy_lines.append(ll)
             all_lines_ids.append(ll.id)
@@ -93,8 +94,10 @@ class Picking(models.Model):
             move_lines_ids = []
             for ll in cpy_lines:
                 if ll.move_id.sudo().product_id == move_line.sudo().product_id:
+                    index = cpy_lines.index(ll)
+                    all_lines_props[index]['move_id'] = move_line.id
+                    ll.write(all_lines_props[index])
                     move_lines_ids.append(ll.id)
-                    ll.move_id = move_line
             move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)]})
         stock_picking.sudo().write({'move_line_ids': [(6, 0, all_lines_ids)]})
 
