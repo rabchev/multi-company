@@ -44,7 +44,7 @@ class Picking(models.Model):
                     if not lines or len(lines) == 0:
                         raise ValidationError('The picking has no stock move lines.')
                     
-                    for prodID in pick_origin.move_lines.product_id:
+                    for prodID in pick_origin.mapped('move_lines.product_id'):
                         pickLen = len(pick.move_lines.filtered(lambda p: p.product_id == prodID))
                         originLen = len(pick_origin.move_lines.filtered(lambda p: p.product_id == prodID))
                         if pickLen != originLen:
