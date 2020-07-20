@@ -54,13 +54,13 @@ class Picking(models.Model):
 
                     # Replace move lines in the stock moves in the IN type stock pickings
                     company_po = self.env['purchase.order'].sudo().search([('origin', '=', sale_origin.name)]).filtered(
-                        lambda p: p.partner_id.id == 1)
-                    for in_stock_picking in company_po.picking_ids:
+                        lambda p: p.sudo().partner_id.id == 1)
+                    for in_stock_picking in company_po.sudo().picking_ids:
                         if '/IN/' in in_stock_picking.name:
                             found = False
                             for l in lines:
-                                for ml in in_stock_picking.move_lines:
-                                    if ml.product_id.id == l.move_id.product_id.id:
+                                for ml in in_stock_picking.sudo().move_lines:
+                                    if ml.sudo().product_id.id == l.move_id.product_id.id:
                                         found = True
                                         break
                                 if found:
@@ -89,17 +89,17 @@ class Picking(models.Model):
                 ll.write({'qty_done': l.qty_done})
             cpy_lines.append(ll)
             all_lines_ids.append(ll.id)
-        for move_line in stock_picking.move_lines:
+        for move_line in stock_picking.sudo().move_lines:
             move_lines_ids = []
             for ll in cpy_lines:
-                if ll.move_id.product_id == move_line.product_id:
+                if ll.move_id.sudo().product_id == move_line.sudo().product_id:
                     move_lines_ids.append(ll.id)
                     ll.move_id = move_line
-            move_line.write({'move_line_ids': [(6, 0, move_lines_ids)]})
-        stock_picking.write({'move_line_ids': [(6, 0, all_lines_ids)]})
+            move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)]})
+        stock_picking.sudo().write({'move_line_ids': [(6, 0, all_lines_ids)]})
 
     def _delete_leaf_move_lines(self, stock_picking):
         for move_line in stock_picking.move_lines:
-            leaf_lines = [l for l in move_line.move_line_ids]
+            leaf_lines = [l for l in move_line.sudo().move_line_ids]
             for leaf in leaf_lines:
-                move_line.write({'move_line_ids': [(2, leaf.id, 0)]})
+                move_line.sudo().write({'move_line_ids': [(2, leaf.id, 0)]})
