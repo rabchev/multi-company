@@ -50,7 +50,7 @@ class Picking(models.Model):
                         if pickLen != originLen:
                             raise ValidationError('Inconsistent order lines between source and current order.')
                     
-                    self._replace_move_lines(pick_origin, lines, True)
+                    self._replace_move_lines(pick_origin, lines)
 
                     # Replace move lines in the stock moves in the IN type stock pickings
                     company_po = self.env['purchase.order'].sudo().search([('origin', '=', sale_origin.name)]).filtered(
@@ -76,17 +76,17 @@ class Picking(models.Model):
 
         return res
     
-    def _replace_move_lines(self, stock_picking, lines, replace_qty=False):
+    def _replace_move_lines(self, stock_picking, lines):
         
+        dest_stock_location = self._get_any_stock_location_dest_id(stock_picking)
         self._delete_leaf_move_lines(stock_picking)
 
         cpy_lines = []
         all_lines_ids = []
         for l in lines:
             ll = l.copy()
-            ll.write({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name})
-            if replace_qty:
-                ll.write({'qty_done': l.qty_done})
+            ll.write({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name,
+                      'qty_done': l.qty_done, 'location_dest_id': dest_stock_location.id})
             cpy_lines.append(ll)
             all_lines_ids.append(ll.id)
         for move_line in stock_picking.sudo().move_lines:
@@ -97,6 +97,13 @@ class Picking(models.Model):
                     ll.move_id = move_line
             move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)]})
         stock_picking.sudo().write({'move_line_ids': [(6, 0, all_lines_ids)]})
+
+    def _get_any_stock_location_dest_id(self, stock_picking):
+        for move_line in stock_picking.move_lines:
+            leaf_lines = [l for l in move_line.sudo().move_line_ids]
+            for leaf in leaf_lines:
+                if len(leaf.sudo().location_dest_id) > 0:
+                    return leaf.sudo().location_dest_id
 
     def _delete_leaf_move_lines(self, stock_picking):
         for move_line in stock_picking.move_lines:
