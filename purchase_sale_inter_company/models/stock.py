@@ -51,6 +51,12 @@ class Picking(models.Model):
                             raise ValidationError('Inconsistent order lines between source and current order.')
                     
                     self._replace_move_lines(pick_origin, lines)
+                    
+                    pick_origin.action_done()
+                    pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
+                    pick.carrier_id = pick_origin.carrier_id
+                    pick_origin.location_id = tmp_loc
+                    pick_origin.partner_id = tmp_rec
 
                     # Replace move lines in the stock moves in the IN type stock pickings
                     company_po = self.env['purchase.order'].sudo().search([('origin', '=', sale_origin.name)]).filtered(
@@ -67,37 +73,43 @@ class Picking(models.Model):
                                     break
                             if found:
                                 self._replace_move_lines(in_stock_picking, lines)
-
-                    pick_origin.action_done()
-                    pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
-                    pick.carrier_id = pick_origin.carrier_id
-                    pick_origin.location_id = tmp_loc
-                    pick_origin.partner_id = tmp_rec
-
+        
         return res
     
     def _replace_move_lines(self, stock_picking, lines):
         
         dest_stock_location = self._get_any_stock_location_dest_id(stock_picking)
+        stock_location = self._get_any_stock_location_id(stock_picking)
         self._delete_leaf_move_lines(stock_picking)
 
-        cpy_lines = []
         all_lines_ids = []
         all_lines_props = []
         for l in lines:
-            ll = l.copy()
-            all_lines_props.append({'lot_id': l.lot_id.id, 'lot_name': l.lot_id.name,
-                      'qty_done': l.qty_done, 'location_dest_id': dest_stock_location.id})
-            cpy_lines.append(ll)
-            all_lines_ids.append(ll.id)
+            props = {'qty_done': l.qty_done, 'location_dest_id': dest_stock_location.id,
+                      'location_id': stock_location.id}
+            # copy multicompany serial number
+            if l.lot_id and l.lot_id.product_id:
+                company_lot = stock_picking.env['stock.production.lot'].sudo().create(
+                    {'name':  l.lot_id.name, 'product_id':  l.lot_id.product_id.id,
+                     'company_id': stock_picking.company_id.id})
+                props['lot_id'] = company_lot.id
+                props['lot_name'] = company_lot.name
+            
+            all_lines_props.append(props)
         for move_line in stock_picking.sudo().move_lines:
             move_lines_ids = []
-            for ll in cpy_lines:
-                if ll.move_id.sudo().product_id == move_line.sudo().product_id:
-                    index = cpy_lines.index(ll)
+            for l in lines:
+                if l.move_id.sudo().product_id == move_line.sudo().product_id:
+                    index = lines.index(l)
                     all_lines_props[index]['move_id'] = move_line.id
-                    ll.write(all_lines_props[index])
+                    all_lines_props[index]['product_id'] = move_line.sudo().product_id.id
+                    all_lines_props[index]['product_uom_id'] = move_line.sudo().product_uom.id
+                    
+                    # creating new stock move lines
+                    ll = self.env['stock.move.line'].sudo().create(all_lines_props[index])
+
                     move_lines_ids.append(ll.id)
+                    all_lines_ids.append(ll.id)
             move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)]})
         stock_picking.sudo().write({'move_line_ids': [(6, 0, all_lines_ids)]})
 
@@ -107,6 +119,15 @@ class Picking(models.Model):
             for leaf in leaf_lines:
                 if len(leaf.sudo().location_dest_id) > 0:
                     return leaf.sudo().location_dest_id
+            return leaf.sudo().location_dest_id
+    
+    def _get_any_stock_location_id(self, stock_picking):
+        for move_line in stock_picking.move_lines:
+            leaf_lines = [l for l in move_line.sudo().move_line_ids]
+            for leaf in leaf_lines:
+                if len(leaf.sudo().location_id) > 0:
+                    return leaf.sudo().location_id
+            return leaf.sudo().location_id
 
     def _delete_leaf_move_lines(self, stock_picking):
         for move_line in stock_picking.move_lines:

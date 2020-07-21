@@ -21,6 +21,7 @@
         'purchase',
         'delivery',
         'account_invoice_inter_company',
+        'stock_production_lot_multi_company',
     ],
     'data': [
         'views/res_company_views.xml',
