@@ -116,18 +116,26 @@ class Picking(models.Model):
     def _get_any_stock_location_dest_id(self, stock_picking):
         for move_line in stock_picking.move_lines:
             leaf_lines = [l for l in move_line.sudo().move_line_ids]
+            leafres = False
             for leaf in leaf_lines:
+                leafres = leaf
                 if len(leaf.sudo().location_dest_id) > 0:
                     return leaf.sudo().location_dest_id
-            return leaf.sudo().location_dest_id
+            if not leafres:
+                return False
+            return leafres.sudo().location_dest_id
     
     def _get_any_stock_location_id(self, stock_picking):
         for move_line in stock_picking.move_lines:
             leaf_lines = [l for l in move_line.sudo().move_line_ids]
+            leafres = False
             for leaf in leaf_lines:
+                leafres = leaf
                 if len(leaf.sudo().location_id) > 0:
                     return leaf.sudo().location_id
-            return leaf.sudo().location_id
+            if not leafres:
+                return False
+            return leafres.sudo().location_id
 
     def _delete_leaf_move_lines(self, stock_picking):
         for move_line in stock_picking.move_lines:
