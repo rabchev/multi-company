@@ -79,14 +79,21 @@ class Picking(models.Model):
     def _replace_move_lines(self, stock_picking, lines):
         
         dest_stock_location = self._get_any_stock_location_dest_id(stock_picking)
+        if not dest_stock_location:
+            dest_stock_location = False
         stock_location = self._get_any_stock_location_id(stock_picking)
+        if not stock_location:
+            stock_location = False
         self._delete_leaf_move_lines(stock_picking)
 
         all_lines_ids = []
         all_lines_props = []
         for l in lines:
-            props = {'qty_done': l.qty_done, 'location_dest_id': dest_stock_location.id,
-                      'location_id': stock_location.id}
+            props = {'qty_done': l.qty_done}
+            if dest_stock_location:
+                props['location_dest_id'] = dest_stock_location.id
+            if stock_location:
+                props['location_id'] = stock_location.id
             # copy multicompany serial number
             if l.lot_id and l.lot_id.product_id:
                 company_lot = stock_picking.env['stock.production.lot'].sudo().create(
@@ -121,9 +128,11 @@ class Picking(models.Model):
                 leafres = leaf
                 if len(leaf.sudo().location_dest_id) > 0:
                     return leaf.sudo().location_dest_id
-            if not leafres:
-                return False
-            return leafres.sudo().location_dest_id
+            if leafres:
+                return leafres.sudo().location_dest_id
+            if stock_picking.location_dest_id:
+                return stock_picking.location_dest_id
+            return False
     
     def _get_any_stock_location_id(self, stock_picking):
         for move_line in stock_picking.move_lines:
@@ -133,9 +142,11 @@ class Picking(models.Model):
                 leafres = leaf
                 if len(leaf.sudo().location_id) > 0:
                     return leaf.sudo().location_id
-            if not leafres:
-                return False
-            return leafres.sudo().location_id
+            if leafres:
+                return leafres.sudo().location_id
+            if stock_picking.location_id:
+                return stock_picking.location_id
+            return False
 
     def _delete_leaf_move_lines(self, stock_picking):
         for move_line in stock_picking.move_lines:
