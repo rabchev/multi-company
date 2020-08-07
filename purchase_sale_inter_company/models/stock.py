@@ -4,7 +4,16 @@
 
 from odoo import models, api
 from odoo.exceptions import ValidationError
+from contextlib import contextmanager
 
+@contextmanager
+def force_company(env, company_id):
+    user_company = env.user.company_id
+    env.user.update({'company_id': company_id})
+    try:
+        yield
+    finally:
+        env.user.update({'company_id': user_company})
 
 class Picking(models.Model):
     _inherit = "stock.picking"
@@ -34,9 +43,7 @@ class Picking(models.Model):
                         raise ValidationError('Source sale order does not have pickings')
                     if origin_count > 1:
                         raise ValidationError('One sale order cannot have more than one picking per supplier.')
-                    tmp_loc = pick_origin.location_id
                     tmp_rec = pick_origin.partner_id
-                    pick_origin.location_id = pick.location_id
                     pick_origin.partner_id = pick.partner_id
                     pick_origin.number_of_packages = pick.number_of_packages or 1
                     pick_origin.carrier_id = sale_origin.carrier_id
@@ -52,10 +59,10 @@ class Picking(models.Model):
                     
                     self._replace_move_lines(pick_origin, lines)
                     
-                    pick_origin.action_done()
+                    # pick_origin.button_validate()
+                    self._validate_picking_force_company(pick_origin, pick_origin.company_id)
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
-                    pick_origin.location_id = tmp_loc
                     pick_origin.partner_id = tmp_rec
 
                     # Replace move lines in the stock moves in the IN type stock pickings
@@ -76,6 +83,10 @@ class Picking(models.Model):
         
         return res
     
+    def _validate_picking_force_company(self, stock_picking, company_id):
+        with force_company(self.env, company_id):
+                stock_picking.with_context(force_company=company_id.id).button_validate()
+
     def _replace_move_lines(self, stock_picking, lines):
         
         dest_stock_location = self._get_any_stock_location_dest_id(stock_picking)
@@ -117,7 +128,7 @@ class Picking(models.Model):
 
                     move_lines_ids.append(ll.id)
                     all_lines_ids.append(ll.id)
-            move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)]})
+            move_line.sudo().write({'move_line_ids': [(6, 0, move_lines_ids)], 'state': 'assigned'})
         stock_picking.sudo().write({'move_line_ids': [(6, 0, all_lines_ids)]})
 
     def _get_any_stock_location_dest_id(self, stock_picking):
@@ -152,4 +163,5 @@ class Picking(models.Model):
         for move_line in stock_picking.move_lines:
             leaf_lines = [l for l in move_line.sudo().move_line_ids]
             for leaf in leaf_lines:
-                move_line.sudo().write({'move_line_ids': [(2, leaf.id, 0)]})
+                move_line_state = move_line.state
+                move_line.sudo().write({'move_line_ids': [(2, leaf.id, 0)], 'state': move_line_state})
