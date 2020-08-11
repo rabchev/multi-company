@@ -85,7 +85,7 @@ class Picking(models.Model):
     
     def _validate_picking_force_company(self, stock_picking, company_id):
         with force_company(self.env, company_id):
-                stock_picking.with_context(force_company=company_id.id).button_validate()
+                stock_picking.with_context(force_company=company_id.id).action_done()
 
     def _replace_move_lines(self, stock_picking, lines):
         
