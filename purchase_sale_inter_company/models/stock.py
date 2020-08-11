@@ -43,7 +43,9 @@ class Picking(models.Model):
                         raise ValidationError('Source sale order does not have pickings')
                     if origin_count > 1:
                         raise ValidationError('One sale order cannot have more than one picking per supplier.')
+                    tmp_loc = pick_origin.location_id
                     tmp_rec = pick_origin.partner_id
+                    pick_origin.location_id = pick.location_id
                     pick_origin.partner_id = pick.partner_id
                     pick_origin.number_of_packages = pick.number_of_packages or 1
                     pick_origin.carrier_id = sale_origin.carrier_id
@@ -59,10 +61,11 @@ class Picking(models.Model):
                     
                     self._replace_move_lines(pick_origin, lines)
                     
-                    # pick_origin.button_validate()
-                    self._validate_picking_force_company(pick_origin, pick_origin.company_id)
+                    pick_origin.action_done()
+                    # self._validate_picking_force_company(pick_origin, pick_origin.company_id)
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
+                    pick_origin.location_id = tmp_loc
                     pick_origin.partner_id = tmp_rec
 
                     # Replace move lines in the stock moves in the IN type stock pickings
