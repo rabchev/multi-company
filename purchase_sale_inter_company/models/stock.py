@@ -61,8 +61,8 @@ class Picking(models.Model):
                     
                     self._replace_move_lines(pick_origin, lines)
                     
-                    pick_origin.action_done()
-                    # self._validate_picking_force_company(pick_origin, pick_origin.company_id)
+                    # pick_origin.action_done()
+                    self._validate_picking_force_company(pick_origin, pick_origin.company_id)
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
                     pick_origin.location_id = tmp_loc
@@ -88,7 +88,7 @@ class Picking(models.Model):
     
     def _validate_picking_force_company(self, stock_picking, company_id):
         with force_company(self.env, company_id):
-                stock_picking.with_context(force_company=company_id.id).action_done()
+                stock_picking.with_context(force_company=company_id.id).button_validate()
 
     def _replace_move_lines(self, stock_picking, lines):
         
