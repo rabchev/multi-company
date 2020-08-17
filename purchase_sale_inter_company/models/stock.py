@@ -43,10 +43,11 @@ class Picking(models.Model):
                         raise ValidationError('Source sale order does not have pickings')
                     if origin_count > 1:
                         raise ValidationError('One sale order cannot have more than one picking per supplier.')
-                    tmp_loc = pick_origin.location_id
-                    tmp_rec = pick_origin.partner_id
-                    pick_origin.location_id = pick.location_id
-                    pick_origin.partner_id = pick.partner_id
+                    # set delivery partner needed for creating the econt DS shipment
+                    if 'ds_delivery_partner_id' in self.env['stock.picking']._fields:
+                        pick_origin.ds_delivery_partner_id = pick.partner_id
+                    if 'ds_delivery_location_id' in self.env['stock.picking']._fields:
+                        pick_origin.ds_delivery_location_id = pick.location_id
                     pick_origin.number_of_packages = pick.number_of_packages or 1
                     pick_origin.carrier_id = sale_origin.carrier_id
                     lines = [l for l in pick.move_line_ids]
@@ -61,12 +62,10 @@ class Picking(models.Model):
                     
                     self._replace_move_lines(pick_origin, lines)
                     
-                    # pick_origin.action_done()
-                    self._validate_picking_force_company(pick_origin, pick_origin.company_id)
+                    if 'ds_delivery_partner_id' in self.env['stock.picking']._fields and 'ds_delivery_location_id' in self.env['stock.picking']._fields:
+                        self._validate_picking_force_company(pick_origin, pick_origin.company_id)
                     pick.carrier_tracking_ref = pick_origin.carrier_tracking_ref
                     pick.carrier_id = pick_origin.carrier_id
-                    pick_origin.location_id = tmp_loc
-                    pick_origin.partner_id = tmp_rec
 
                     # Replace move lines in the stock moves in the IN type stock pickings
                     company_po = self.env['purchase.order'].sudo().search([('origin', '=', sale_origin.name)]).filtered(
