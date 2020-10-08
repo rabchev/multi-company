@@ -29,8 +29,13 @@ class PurchaseOrder(models.Model):
     @api.multi
     def button_confirm(self):
         """ Generate inter company sale order base on conditions."""
-        res = super(PurchaseOrder, self).button_confirm()
+        create_so_list = []
         for purchase_order in self:
+            if purchase_order.state not in ['draft', 'sent']:
+                continue
+            create_so_list.append(purchase_order)
+        res = super(PurchaseOrder, self).button_confirm()
+        for purchase_order in create_so_list:
             if not self.auto_sale_order_id:
                 # get the company from partner then trigger action of
                 # intercompany relation
